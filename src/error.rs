@@ -1,0 +1,150 @@
+use std::fmt;
+
+#[derive(Debug, Clone)]
+pub enum SpotifyError {
+    Error(String),
+    IoError(std::io::ErrorKind, String),
+    MercuryError,
+    AuthenticationError,
+    Unavailable,
+    SpotifyIdError,
+    ChannelError,
+    AudioKeyError,
+    JoinError,
+    ASpotify(String),
+    Serde(String, usize, usize),
+    InvalidUri,
+    ParseError(url::ParseError),
+    ID3Error(String, String),
+    Reqwest(String),
+    MP4AMeta(String, String),
+    InvalidFormat
+}
+
+/// std
+impl std::error::Error for SpotifyError {}
+impl fmt::Display for SpotifyError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SpotifyError::Error(e) => write!(f, "Error: {}", e),
+            SpotifyError::MercuryError => write!(f, "Mercury Error"),
+            SpotifyError::IoError(kind, err) => write!(f, "IO: {:?} {}", kind, err),
+            SpotifyError::AuthenticationError => write!(f, "Authentication Error"),
+            SpotifyError::Unavailable => write!(f, "Unavailable!"),
+            SpotifyError::SpotifyIdError => write!(f, "Invalid Spotify ID"),
+            SpotifyError::ChannelError => write!(f, "Channel Error"),
+            SpotifyError::AudioKeyError => write!(f, "Audio Key Error"),
+            SpotifyError::JoinError => write!(f, "Tokio Join Error"),
+            SpotifyError::ASpotify(e) => write!(f, "Spotify Error: {}", e),
+            SpotifyError::Serde(e, l, c) => write!(f, "Serde Error @{}:{} {}", l, c, e),
+            SpotifyError::InvalidUri => write!(f, "Invalid URI"),
+            SpotifyError::ParseError(e) => write!(f, "Parse Error: {}", e),
+            SpotifyError::ID3Error(k, e) => write!(f, "ID3 Error: {} {}", k, e),
+            SpotifyError::Reqwest(e) => write!(f, "Reqwest Error: {}", e),
+            SpotifyError::MP4AMeta(k, e) => write!(f, "MP4AMeta Error: {} {}", k, e),
+            SpotifyError::InvalidFormat => write!(f, "Invalid Format!")
+        }
+    }
+}
+impl From<std::io::Error> for SpotifyError {
+    fn from(e: std::io::Error) -> Self {
+        Self::IoError(e.kind(), e.to_string())
+    }
+}
+impl From<Box<dyn std::error::Error>> for SpotifyError {
+    fn from(e: Box<dyn std::error::Error>) -> Self {
+        Self::Error(e.to_string())
+    }
+}
+
+
+/// librespot
+impl From<librespot::core::mercury::MercuryError> for SpotifyError {
+    fn from(_: librespot::core::mercury::MercuryError) -> Self {
+        Self::MercuryError
+    }
+}
+
+impl From<librespot::core::session::SessionError> for SpotifyError {
+    fn from(e: librespot::core::session::SessionError) -> Self {
+        match e {
+            librespot::core::session::SessionError::IoError(e) => e.into(),
+            librespot::core::session::SessionError::AuthenticationError(_) => SpotifyError::AuthenticationError
+        }
+    }
+}
+
+impl From<librespot::core::spotify_id::SpotifyIdError> for SpotifyError {
+    fn from(_: librespot::core::spotify_id::SpotifyIdError) -> Self {
+        Self::SpotifyIdError
+    }
+}
+
+impl From<librespot::core::channel::ChannelError> for SpotifyError {
+    fn from(_: librespot::core::channel::ChannelError) -> Self {
+        Self::ChannelError
+    }
+}
+
+impl From<librespot::core::audio_key::AudioKeyError> for SpotifyError {
+    fn from(_: librespot::core::audio_key::AudioKeyError) -> Self {
+        Self::AudioKeyError
+    }
+}
+
+// Tokio
+impl From<tokio::task::JoinError> for SpotifyError {
+    fn from(_: tokio::task::JoinError) -> Self {
+        Self::JoinError
+    }
+}
+
+// aspotify
+impl From<aspotify::Error> for SpotifyError {
+    fn from(e: aspotify::Error) -> Self {
+        Self::ASpotify(e.to_string())
+    }
+}
+
+// serde
+impl From<serde_json::Error> for SpotifyError {
+    fn from(e: serde_json::Error) -> Self {
+        Self::Serde(e.to_string(), e.line(), e.column())
+    }
+}
+
+// url
+impl From<url::ParseError> for SpotifyError {
+    fn from(e: url::ParseError) -> Self {
+        Self::ParseError(e)
+    }
+}
+
+// id3
+impl From<id3::Error> for SpotifyError {
+    fn from(e: id3::Error) -> Self {
+        Self::ID3Error(e.kind.to_string(), e.description.to_string())
+    }
+}
+
+// reqwest
+impl From<reqwest::Error> for SpotifyError {
+    fn from(e: reqwest::Error) -> Self {
+        Self::Reqwest(e.to_string())
+    }
+}
+
+// mp4ameta
+impl From<mp4ameta::Error> for SpotifyError {
+    fn from(e: mp4ameta::Error) -> Self {
+        Self::MP4AMeta(format!("{:?}", e.kind), e.description)
+    }
+}
+
+
+// lewton
+impl From<lewton::VorbisError> for SpotifyError {
+    fn from(e: lewton::VorbisError) -> Self {
+        SpotifyError::Error(format!("Lewton: {}", e))
+    }
+}
